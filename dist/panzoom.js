@@ -65,6 +65,7 @@ function createPanZoom(domElement, options) {
   var boundsPadding = typeof options.boundsPadding === 'number' ? options.boundsPadding : 0.05
   var zoomDoubleClickSpeed = typeof options.zoomDoubleClickSpeed === 'number' ? options.zoomDoubleClickSpeed : defaultDoubleTapZoomSpeed
   var beforeWheel = options.beforeWheel || noop
+  var beforePan = options.beforePan || noop
   var speed = typeof options.zoomSpeed === 'number' ? options.zoomSpeed : defaultZoomSpeed
 
   validateBounds(bounds)
@@ -102,6 +103,8 @@ function createPanZoom(domElement, options) {
   var zoomToAnimation
 
   var multitouch
+  var panPaused = false
+  var zoomPaused = false
   var paused = false
 
   listenForEvents()
@@ -117,6 +120,14 @@ function createPanZoom(domElement, options) {
     getTransform: getTransformModel,
     showRectangle: showRectangle,
 
+    pausePan: pausePan,
+    resumePan: resumePan,
+    isPanPaused: isPanPaused,
+
+    pauseZoom: pauseZoom,
+    resumeZoom: resumeZoom,
+    isZoomPaused: isZoomPaused,
+
     pause: pause,
     resume: resume,
     isPaused: isPaused,
@@ -125,6 +136,38 @@ function createPanZoom(domElement, options) {
   eventify(api);
 
   return api;
+
+  function pausePan() {
+    releasePanEvents()
+    pausedPan = true
+  }
+
+  function resumePan() {
+    if (panPaused) {
+      listenForPanEvents()
+      pausedPan = false
+    }
+  }
+
+  function isPanPaused() {
+    return pausedPan;
+  }
+
+  function pauseZoom() {
+    releaseZoomEvents()
+    zoomPaused = true
+  }
+
+  function resumeZoom() {
+    if (panPaused) {
+      listenForZoomEvents()
+      zoomPaused = false
+    }
+  }
+
+  function isZoomPaused() {
+    return zoomPaused;
+  }
 
   function pause() {
     releaseEvents()
@@ -144,7 +187,8 @@ function createPanZoom(domElement, options) {
 
   function showRectangle(rect) {
     // TODO: this duplicates autocenter. I think autocenter should go.
-    var size = transformToScreen(owner.clientWidth, owner.clientHeight)
+    let clientRect = owner.getBoundingClientRect()
+    var size = transformToScreen(clientRect.width, clientRect.height)
 
     var rectWidth = rect.right - rect.left
     var rectHeight = rect.bottom - rect.top
@@ -222,14 +266,16 @@ function createPanZoom(domElement, options) {
   }
 
   function moveTo(x, y) {
-    transform.x = x
-    transform.y = y
+    if (panPaused) return
 
-    keepTransformInsideBounds()
+     transform.x = x
+     transform.y = y
 
-    triggerEvent('pan')
-    makeDirty()
-  }
+     keepTransformInsideBounds()
+
+     triggerEvent('pan')
+     makeDirty()
+   }
 
   function moveBy(dx, dy) {
     moveTo(transform.x + dx, transform.y + dy)
@@ -416,6 +462,20 @@ function createPanZoom(domElement, options) {
     makeDirty()
   }
 
+   function listenForPanEvents() {
+     owner.addEventListener('mousedown', onMouseDown)
+     owner.addEventListener('touchstart', onTouch)
+
+     makeDirty()
+   }
+
+  function listenForZoomEvents() {
+    owner.addEventListener('dblclick', onDoubleClick)
+    wheel.addWheelListener(owner, onMouseWheel)
+
+    makeDirty()
+  }
+
   function releaseEvents() {
     wheel.removeWheelListener(owner, onMouseWheel)
     owner.removeEventListener('mousedown', onMouseDown)
@@ -436,6 +496,20 @@ function createPanZoom(domElement, options) {
     triggerPanEnd()
   }
 
+  function releasePanEvents() {
+    owner.removeEventListener('mousedown', onMouseDown)
+    owner.removeEventListener('touchstart', onTouch)
+
+    releaseDocumentMouse()
+    releaseTouches()
+    triggerPanEnd()
+  }
+
+  function releaseZoomEvents() {
+    wheel.removeWheelListener(owner, onMouseWheel)
+    owner.removeEventListener('dblclick', onDoubleClick)
+    smoothScroll.cancel()
+  }
 
   function frame() {
     if (isDirty) applyTransform()
@@ -630,7 +704,8 @@ function createPanZoom(domElement, options) {
   }
 
   function onMouseDown(e) {
-    if (touchInProgress) {
+    //give the option to add other deps for executing
+    if (beforePan(e) || touchInProgress) {
       // modern browsers will fire mousedown for touch events too
       // we do not want this: touch is handled separately.
       e.stopPropagation()
@@ -660,7 +735,7 @@ function createPanZoom(domElement, options) {
 
   function onMouseMove(e) {
     // no need to worry about mouse events when touch is happening
-    if (touchInProgress) return
+    if (beforePan(e) ||touchInProgress) return
 
     triggerPanStart()
 
@@ -676,6 +751,7 @@ function createPanZoom(domElement, options) {
   }
 
   function onMouseUp() {
+    
     preventTextSelection.release()
     triggerPanEnd()
     releaseDocumentMouse()
@@ -696,8 +772,8 @@ function createPanZoom(domElement, options) {
   }
 
   function onMouseWheel(e) {
-    // if client does not want to handle this event - just ignore the call
-    if (beforeWheel(e)) return
+    // if client does not want to handle this event or if zoom is paused- just ignore the call
+    if (zoomPaused || beforeWheel(e)) return
 
     smoothScroll.cancel()
 
