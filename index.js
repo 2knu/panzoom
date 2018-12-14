@@ -119,6 +119,10 @@ function createPanZoom(domElement, options) {
     getTransform: getTransformModel,
     showRectangle: showRectangle,
 
+    updateMinZoom: updateMinZoom,
+    updateMaxZoom: updateMaxZoom,
+    updateBounds: updateBounds,
+
     pausePan: pausePan,
     resumePan: resumePan,
     isPanPaused: isPanPaused,
@@ -135,6 +139,22 @@ function createPanZoom(domElement, options) {
   eventify(api);
 
   return api;
+
+  function updateBounds(newBounds)
+  {
+    validateBounds(newBounds)
+    bounds = newBounds
+  }
+
+  function updateMinZoom(newMin)
+  {
+    minZoom = newMin
+  }
+
+  function updateMaxZoom(newMax)
+  {
+    maxZoom = newMax
+  }
 
   function pausePan() {
     releasePanEvents()
@@ -750,7 +770,7 @@ function createPanZoom(domElement, options) {
   }
 
   function onMouseUp() {
-    
+
     preventTextSelection.release()
     triggerPanEnd()
     releaseDocumentMouse()
