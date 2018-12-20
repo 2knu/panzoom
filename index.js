@@ -65,6 +65,7 @@ function createPanZoom(domElement, options) {
   var zoomDoubleClickSpeed = typeof options.zoomDoubleClickSpeed === 'number' ? options.zoomDoubleClickSpeed : defaultDoubleTapZoomSpeed
   var beforeWheel = options.beforeWheel || noop
   var beforePan = options.beforePan || noop
+  var moveCondition = options.moveCondition || noop
   var speed = typeof options.zoomSpeed === 'number' ? options.zoomSpeed : defaultZoomSpeed
 
   validateBounds(bounds)
@@ -297,7 +298,11 @@ function createPanZoom(domElement, options) {
    }
 
   function moveBy(dx, dy) {
-    moveTo(transform.x + dx, transform.y + dy)
+    var newx = transform.x + dx;
+    var newy = transform.y + dy
+    if (moveCondition(transform.x, transform.y, newx, newy)) return
+    
+    moveTo(newx, newy)
   }
 
   function keepTransformInsideBounds() {
@@ -575,7 +580,6 @@ function createPanZoom(domElement, options) {
       var moveSpeedRatio = 0.05
       var dx = offset * moveSpeedRatio * x
       var dy = offset * moveSpeedRatio * y
-
       // TODO: currently we do not animate this. It could be better to have animation
       internalMoveBy(dx, dy)
     }
@@ -754,7 +758,7 @@ function createPanZoom(domElement, options) {
 
   function onMouseMove(e) {
     // no need to worry about mouse events when touch is happening
-    if (beforePan(e) ||touchInProgress) return
+    if (touchInProgress) return
 
     triggerPanStart()
 
@@ -765,7 +769,7 @@ function createPanZoom(domElement, options) {
 
     mouseX = point.x
     mouseY = point.y
-
+    beforePan(e) ||
     internalMoveBy(dx, dy)
   }
 
