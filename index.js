@@ -208,7 +208,7 @@ function createPanZoom(domElement, options) {
 
   function showRectangle(rect) {
     // TODO: this duplicates autocenter. I think autocenter should go.
-    let clientRect = owner.getBoundingClientRect()
+    var clientRect = owner.getBoundingClientRect()
     var size = transformToScreen(clientRect.width, clientRect.height)
 
     var rectWidth = rect.right - rect.left
