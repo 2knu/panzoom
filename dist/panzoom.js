@@ -134,6 +134,8 @@ function createPanZoom(domElement, options) {
     resumeZoom: resumeZoom,
     isZoomPaused: isZoomPaused,
 
+    pauseKeys: pauseKeys,
+    resumeKeys: resumeKeys,
     pause: pause,
     resume: resume,
     isPaused: isPaused,
@@ -189,6 +191,14 @@ function createPanZoom(domElement, options) {
 
   function isZoomPaused() {
     return zoomPaused;
+  }
+
+  function pauseKeys () {
+    releaseKeyEvents()
+  }
+
+  function resumeKeys () {
+    listenForKeyEvents()
   }
 
   function pause() {
@@ -509,6 +519,14 @@ function createPanZoom(domElement, options) {
     wheel.addWheelListener(owner, onMouseWheel)
 
     makeDirty()
+  }
+
+  function listenForKeyEvents() {
+    owner.addEventListener('keydown', onKeyDown)
+  }
+
+  function releaseKeyEvents() {
+    owner.removeEventListener('keydown', onKeyDown)
   }
 
   function releaseEvents() {

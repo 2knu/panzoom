@@ -110,7 +110,11 @@ test('it can use keyboard', t => {
   // JSDOM does not support this, have to override:
   content.parentElement.getBoundingClientRect = makeBoundingRect(100, 100);
 
-  var panzoom = createPanzoom(content);
+  var panzoom = createPanzoom(content, {
+    beforePan: function(e) {return false},
+    moveXCondition: function (ox,nx) {return true},
+    moveYCondition: function (oy,ny) {return true}
+  });
   var counter = {};
   panzoom.on('pan', countEvent(counter, 'pan'));
   panzoom.on('transform', countEvent(counter, 'transform'));
@@ -269,9 +273,9 @@ function parseMatrixTransform(transformString) {
   if (!matches) return;
 
   return {
-    scaleX: parseFloat(matches[1]), 
-    scaleY: parseFloat(matches[2]), 
-    dx: parseFloat(matches[3]), 
+    scaleX: parseFloat(matches[1]),
+    scaleY: parseFloat(matches[2]),
+    dx: parseFloat(matches[3]),
     dy: parseFloat(matches[4])
   }
 }
